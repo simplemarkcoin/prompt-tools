@@ -1,0 +1,5 @@
+{
+  "name": "Prompt Vault",
+  "description": "A production-ready vault for organizing AI prompts and powerful built-in tools for rephrasing, improving, and adjusting tones using Gemini AI.",
+  "requestFramePermissions": []
+}
