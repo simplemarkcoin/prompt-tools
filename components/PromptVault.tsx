@@ -3,13 +3,14 @@ import React from 'react';
 import { Prompt } from '../types';
 import { CATEGORIES } from '../constants';
 import { storageService } from '../services/storageService';
-import { Search, Plus, Trash2, Edit3, Copy, Check, X } from 'lucide-react';
+import { Search, Plus, Trash2, Edit3, Copy, Check, X, AlertTriangle } from 'lucide-react';
 
 const PromptVault: React.FC = () => {
   const [prompts, setPrompts] = React.useState<Prompt[]>([]);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState('All');
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [deleteModal, setDeleteModal] = React.useState<{ isOpen: boolean; targetId: string | 'ALL' }>({ isOpen: false, targetId: '' });
   const [editingPrompt, setEditingPrompt] = React.useState<Prompt | null>(null);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
@@ -40,11 +41,14 @@ const PromptVault: React.FC = () => {
     loadPrompts();
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Delete permanently?')) {
-      storageService.savePrompts(prompts.filter(p => p.id !== id));
-      loadPrompts();
+  const confirmDelete = () => {
+    if (deleteModal.targetId === 'ALL') {
+      storageService.savePrompts([]);
+    } else {
+      storageService.savePrompts(prompts.filter(p => p.id !== deleteModal.targetId));
     }
+    setDeleteModal({ isOpen: false, targetId: '' });
+    loadPrompts();
   };
 
   const openEdit = (prompt: Prompt) => {
@@ -72,12 +76,22 @@ const PromptVault: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white uppercase tracking-tight">Vault</h1>
           <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest">Knowledge Base Index</p>
         </div>
-        <button 
-          onClick={() => { setEditingPrompt(null); setFormData({ title: '', description: '', category: 'General', content: '' }); setIsModalOpen(true); }}
-          className="bg-slate-950 dark:bg-white text-white dark:text-slate-950 px-4 py-2 rounded-none hover:bg-slate-800 dark:hover:bg-slate-200 transition-all font-bold uppercase tracking-widest text-[10px] flex items-center gap-2"
-        >
-          <Plus className="w-3 h-3" /> Add Item
-        </button>
+        <div className="flex gap-2">
+          {prompts.length > 0 && (
+            <button 
+              onClick={() => setDeleteModal({ isOpen: true, targetId: 'ALL' })}
+              className="border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-2 rounded-none hover:bg-red-50 dark:hover:bg-red-950/30 transition-all font-bold uppercase tracking-widest text-[10px] flex items-center gap-2"
+            >
+              <Trash2 className="w-3 h-3" /> Clear Vault
+            </button>
+          )}
+          <button 
+            onClick={() => { setEditingPrompt(null); setFormData({ title: '', description: '', category: 'General', content: '' }); setIsModalOpen(true); }}
+            className="bg-slate-950 dark:bg-white text-white dark:text-slate-950 px-4 py-2 rounded-none hover:bg-slate-800 dark:hover:bg-slate-200 transition-all font-bold uppercase tracking-widest text-[10px] flex items-center gap-2"
+          >
+            <Plus className="w-3 h-3" /> Add Item
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-2">
@@ -126,7 +140,7 @@ const PromptVault: React.FC = () => {
                   <button onClick={() => openEdit(prompt)} className="text-slate-400 dark:text-slate-600 hover:text-slate-950 dark:hover:text-white">
                     <Edit3 className="w-3 h-3" />
                   </button>
-                  <button onClick={() => handleDelete(prompt.id)} className="text-slate-400 dark:text-slate-600 hover:text-red-600">
+                  <button onClick={() => setDeleteModal({ isOpen: true, targetId: prompt.id })} className="text-slate-400 dark:text-slate-600 hover:text-red-600">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
@@ -155,6 +169,43 @@ const PromptVault: React.FC = () => {
           ))
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/40 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-950 rounded-none w-full max-w-sm border border-red-600 dark:border-red-900 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center space-y-4">
+              <div className="flex justify-center">
+                <div className="bg-red-50 dark:bg-red-950/30 p-3">
+                  <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+                </div>
+              </div>
+              <div>
+                <h2 className="text-sm font-black text-slate-950 dark:text-white uppercase tracking-widest">Confirm Deletion</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-2 leading-relaxed">
+                  {deleteModal.targetId === 'ALL' 
+                    ? 'Are you certain you want to purge your entire vault? This action is irreversible.' 
+                    : 'This record will be permanently deleted from your local storage. Proceed?'}
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 pt-2">
+                <button 
+                  onClick={confirmDelete}
+                  className="w-full bg-red-600 text-white px-4 py-3 rounded-none font-bold uppercase tracking-widest text-[10px] active:scale-95 hover:bg-red-700 transition-colors"
+                >
+                  Delete Permanently
+                </button>
+                <button 
+                  onClick={() => setDeleteModal({ isOpen: false, targetId: '' })}
+                  className="w-full bg-transparent text-slate-400 dark:text-slate-500 px-4 py-2 rounded-none font-bold uppercase tracking-widest text-[10px] hover:text-slate-950 dark:hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/20 dark:bg-black/60 backdrop-blur-sm">
