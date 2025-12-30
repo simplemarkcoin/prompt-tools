@@ -4,11 +4,11 @@ import { storageService } from "./storageService";
 import { ToolType, AIProvider } from "../types";
 
 export const aiService = {
-  generate: async (toolType: ToolType, defaultInstruction: string, prompt: string): Promise<string[]> => {
+  generate: async (toolType: ToolType, systemInstruction: string, prompt: string): Promise<string[]> => {
     const settings = storageService.getSettings();
-    const systemInstruction = settings.customInstructions?.[toolType] || defaultInstruction;
     const provider = settings.provider || 'gemini';
 
+    // If we're using the proxy (Gemini only for now)
     if (provider === 'gemini' && settings.useProxy && settings.proxyUrl) {
       const combinedPrompt = `SYSTEM INSTRUCTION: ${systemInstruction}\n\nUSER INPUT: ${prompt}\n\nIMPORTANT: Respond ONLY with a valid JSON array of strings.`;
       return aiService.generateViaProxy(settings.proxyUrl, combinedPrompt);
@@ -41,7 +41,6 @@ export const aiService = {
 
       const data = await response.json();
       
-      // Handle the data structure returned by the worker
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                    data.text || 
                    data.response || 
