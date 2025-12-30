@@ -4,7 +4,7 @@ import { AppSettings, ToolType, AIProvider } from '../types';
 import { AI_MODELS, TOOLS } from '../constants';
 import { storageService } from '../services/storageService';
 import { aiService } from '../services/aiService';
-import { AlertCircle, CheckCircle2, Loader2, Save, Cpu, FlaskConical, ChevronDown, ChevronUp, Key, ExternalLink, Globe, Zap, Eye, EyeOff, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, Save, Cpu, FlaskConical, ChevronDown, ChevronUp, Key, ExternalLink, Globe, Zap, Eye, EyeOff, ShieldCheck, ShieldAlert, Server } from 'lucide-react';
 
 type ValidationStatus = 'idle' | 'checking' | 'valid' | 'invalid' | 'missing';
 
@@ -12,10 +12,8 @@ const Settings: React.FC = () => {
   const [settings, setSettings] = React.useState<AppSettings>(storageService.getSettings());
   const [isTesting, setIsTesting] = React.useState(false);
   const [testResult, setTestResult] = React.useState<'success' | 'error' | null>(null);
-  const [expandedTool, setExpandedTool] = React.useState<ToolType | null>(null);
   const [showKeys, setShowKeys] = React.useState<Record<string, boolean>>({});
   
-  // Validation states
   const [valStatuses, setValStatuses] = React.useState<Record<string, ValidationStatus>>({
     openai: 'idle',
     groq: 'idle',
@@ -24,26 +22,20 @@ const Settings: React.FC = () => {
 
   const aistudio = (window as any).aistudio;
 
-  // Auto-test effect with debounce
   React.useEffect(() => {
     const providers = ['openai', 'groq', 'openrouter'] as const;
-    
     const timers = providers.map(p => {
       const key = settings.apiKeys[p];
-      
       if (!key || key.trim() === '') {
         setValStatuses(prev => ({ ...prev, [p]: 'missing' }));
         return null;
       }
-
       setValStatuses(prev => ({ ...prev, [p]: 'checking' }));
-      
       return setTimeout(async () => {
         const isValid = await aiService.testConnection(p as AIProvider, '', key);
         setValStatuses(prev => ({ ...prev, [p]: isValid ? 'valid' : 'invalid' }));
-      }, 1000); // 1s debounce
+      }, 1000);
     });
-
     return () => timers.forEach(t => t && clearTimeout(t));
   }, [settings.apiKeys]);
 
@@ -59,10 +51,6 @@ const Settings: React.FC = () => {
       ...prev,
       apiKeys: { ...prev.apiKeys, [provider]: val }
     }));
-  };
-
-  const toggleKeyVisibility = (provider: string) => {
-    setShowKeys(prev => ({ ...prev, [provider]: !prev[provider] }));
   };
 
   const handleSave = () => {
@@ -86,25 +74,6 @@ const Settings: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: ValidationStatus) => {
-    switch (status) {
-      case 'checking': return <Loader2 className="w-3 h-3 animate-spin text-slate-400" />;
-      case 'valid': return <ShieldCheck className="w-3 h-3 text-green-500" />;
-      case 'invalid': return <ShieldAlert className="w-3 h-3 text-rose-500" />;
-      case 'missing': return <span className="text-[7px] font-bold text-rose-400 uppercase">Key Required</span>;
-      default: return null;
-    }
-  };
-
-  const getBorderColor = (status: ValidationStatus) => {
-    switch (status) {
-      case 'valid': return 'border-green-500/50 dark:border-green-500/30';
-      case 'invalid': return 'border-rose-500/50 dark:border-rose-500/30';
-      case 'missing': return 'border-rose-200 dark:border-rose-900/40';
-      default: return 'border-slate-200 dark:border-slate-800';
-    }
-  };
-
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
       <div>
@@ -113,55 +82,80 @@ const Settings: React.FC = () => {
       </div>
 
       <div className="space-y-6">
-        {/* Universal Keychain */}
+        {/* Security & Proxy Section */}
+        <section className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 bg-slate-50/50 dark:bg-slate-900/50">
+            <Server className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+            <h2 className="text-[10px] font-bold text-slate-950 dark:text-white uppercase tracking-widest">Security & Proxy</h2>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-slate-900 dark:text-white uppercase">Use Secure Worker Proxy</p>
+                <p className="text-[8px] text-slate-500 uppercase tracking-tight">Routes Gemini calls through your Cloudflare Worker</p>
+              </div>
+              <button 
+                onClick={() => setSettings({...settings, useProxy: !settings.useProxy})}
+                className={`w-10 h-5 rounded-full relative transition-colors ${settings.useProxy ? 'bg-slate-950 dark:bg-white' : 'bg-slate-200 dark:bg-slate-800'}`}
+              >
+                <div className={`absolute top-1 w-3 h-3 rounded-full transition-all ${settings.useProxy ? 'right-1 bg-white dark:bg-slate-950' : 'left-1 bg-white dark:bg-slate-400'}`} />
+              </button>
+            </div>
+            
+            {settings.useProxy && (
+              <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Worker Endpoint URL</label>
+                <input 
+                  type="text"
+                  placeholder="https://your-worker.workers.dev"
+                  className="w-full px-4 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-[10px] dark:text-white focus:outline-none"
+                  value={settings.proxyUrl || ''}
+                  onChange={(e) => setSettings({...settings, proxyUrl: e.target.value})}
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Global Keychain */}
         <section className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 bg-slate-50/50 dark:bg-slate-900/50">
             <Globe className="w-4 h-4 text-slate-600 dark:text-slate-400" />
             <h2 className="text-[10px] font-bold text-slate-950 dark:text-white uppercase tracking-widest">Global Keychain</h2>
           </div>
           <div className="p-6 space-y-6">
-            {/* Native Gemini */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-950 dark:text-white">Gemini (Native)</span>
-                <span className={`h-1.5 w-1.5 rounded-full ${settings.hasKeySelected ? 'bg-green-500 animate-pulse' : 'bg-slate-300'}`} />
+            {!settings.useProxy && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-950 dark:text-white">Gemini (Native)</span>
+                  <span className={`h-1.5 w-1.5 rounded-full ${settings.hasKeySelected ? 'bg-green-500 animate-pulse' : 'bg-slate-300'}`} />
+                </div>
+                <button onClick={handleOpenGeminiKey} className="w-full text-left px-4 py-2 border border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors flex items-center justify-between">
+                  <span>{settings.hasKeySelected ? 'Project Key Linked' : 'Connect GCP Project'}</span>
+                  <ExternalLink className="w-3 h-3 opacity-50" />
+                </button>
               </div>
-              <button onClick={handleOpenGeminiKey} className="w-full text-left px-4 py-2 border border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors flex items-center justify-between">
-                <span>{settings.hasKeySelected ? 'Project Key Linked' : 'Connect GCP Project'}</span>
-                <ExternalLink className="w-3 h-3 opacity-50" />
-              </button>
-            </div>
+            )}
 
-            {/* Manual Providers */}
             {['openai', 'groq', 'openrouter'].map((provider) => (
               <div key={provider} className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-950 dark:text-white">{provider}</span>
                   <div className="flex items-center gap-2">
-                    {getStatusBadge(valStatuses[provider])}
+                    {valStatuses[provider] === 'checking' ? <Loader2 className="w-3 h-3 animate-spin" /> : 
+                     valStatuses[provider] === 'valid' ? <ShieldCheck className="w-3 h-3 text-green-500" /> : 
+                     valStatuses[provider] === 'invalid' ? <ShieldAlert className="w-3 h-3 text-rose-500" /> : null}
                   </div>
                 </div>
                 <div className="relative">
                   <input 
                     type={showKeys[provider] ? "text" : "password"}
                     placeholder={`ENTER ${provider.toUpperCase()} API KEY`}
-                    className={`w-full pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/50 border ${getBorderColor(valStatuses[provider])} font-mono text-[10px] dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 focus:outline-none transition-all`}
+                    className="w-full pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 font-mono text-[10px] dark:text-white focus:outline-none"
                     value={(settings.apiKeys as any)[provider] || ''}
                     onChange={(e) => updateKey(provider, e.target.value)}
                   />
-                  <button 
-                    onClick={() => toggleKeyVisibility(provider)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-950 dark:hover:text-white"
-                  >
-                    {showKeys[provider] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  </button>
                 </div>
-                {valStatuses[provider] === 'invalid' && (
-                  <p className="text-[8px] font-bold text-rose-500 uppercase tracking-tighter">Handshake failed: Invalid credentials</p>
-                )}
-                {valStatuses[provider] === 'valid' && (
-                  <p className="text-[8px] font-bold text-green-500 uppercase tracking-tighter">Connection verified</p>
-                )}
               </div>
             ))}
           </div>
@@ -207,7 +201,6 @@ const Settings: React.FC = () => {
           </div>
         </section>
 
-        {/* Global Save */}
         <button 
           onClick={handleSave}
           className="w-full bg-slate-950 dark:bg-white text-white dark:text-slate-950 py-4 rounded-none font-bold uppercase tracking-[0.3em] hover:bg-slate-800 dark:hover:bg-slate-100 transition-all text-[11px] active:scale-95"

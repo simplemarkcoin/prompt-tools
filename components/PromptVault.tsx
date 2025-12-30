@@ -58,13 +58,13 @@ const PromptVault: React.FC = () => {
 
     if (diff < dayInMs) {
       const seconds = Math.floor(diff / 1000);
-      if (seconds < 60) return `${seconds || 1}s ago`;
+      if (seconds < 60) return `${seconds || 1}s`;
       const minutes = Math.floor(seconds / 60);
-      if (minutes < 60) return `${minutes}m ago`;
+      if (minutes < 60) return `${minutes}m`;
       const hours = Math.floor(minutes / 60);
-      return `${hours}h ago`;
+      return `${hours}h`;
     }
-    return new Date(timestamp).toLocaleDateString();
+    return new Date(timestamp).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
   };
 
   const openEdit = (prompt: Prompt) => {
@@ -116,7 +116,7 @@ const PromptVault: React.FC = () => {
           <input 
             type="text" 
             placeholder="FILTER ENTRIES..." 
-            className="w-full pl-9 pr-4 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-none focus:outline-none focus:border-slate-950 dark:focus:border-white font-bold text-[9px] tracking-wider placeholder:text-slate-300 dark:text-white"
+            className="w-full pl-9 pr-4 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-none focus:outline-none focus:border-slate-950 dark:focus:border-white font-bold text-[9px] tracking-wider placeholder:text-slate-300 dark:text-white uppercase"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -143,17 +143,17 @@ const PromptVault: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-slate-200 dark:bg-slate-800 border border-slate-200 dark:border-slate-800">
         {filteredPrompts.length === 0 ? (
           <div className="col-span-full py-20 flex flex-col items-center justify-center bg-white dark:bg-slate-950">
-            <p className="text-slate-300 dark:text-slate-600 font-bold text-[9px] uppercase tracking-widest">No matching records</p>
+            <p className="text-slate-300 dark:text-slate-600 font-bold text-[9px] uppercase tracking-widest">Archive Status: Empty</p>
           </div>
         ) : (
           filteredPrompts.map(prompt => (
-            <div key={prompt.id} className="group bg-white dark:bg-slate-950 p-4 flex flex-col relative transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40">
+            <div key={prompt.id} className="group bg-white dark:bg-slate-950 p-3.5 flex flex-col relative transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-[7px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
                     {formatTimestamp(prompt.createdAt)}
                   </span>
-                  <span className="text-[7px] font-bold uppercase tracking-widest border border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500 px-1.5 py-0.5">
+                  <span className="text-[7px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600 px-1.5 py-0.5">
                     {prompt.category}
                   </span>
                 </div>
@@ -167,20 +167,20 @@ const PromptVault: React.FC = () => {
                 </div>
               </div>
               
-              <h3 className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 mb-0.5 uppercase tracking-wide leading-tight line-clamp-2">{prompt.title}</h3>
-              <p className="text-slate-400 dark:text-slate-500 text-[9px] font-normal mb-3 uppercase tracking-tight line-clamp-1">{prompt.description}</p>
+              <h3 className="text-[10px] font-medium text-slate-800 dark:text-slate-200 mb-0.5 uppercase tracking-wide leading-tight line-clamp-2">{prompt.title}</h3>
+              <p className="text-slate-400 dark:text-slate-500 text-[8px] font-normal mb-3 uppercase tracking-tight line-clamp-1">{prompt.description}</p>
               
               <div className="bg-slate-50/50 dark:bg-slate-900/30 p-2.5 rounded-none border border-slate-100/50 dark:border-slate-800/50 flex-1 overflow-hidden">
-                <p className="text-[10px] text-slate-600 dark:text-slate-400 font-mono line-clamp-3 leading-relaxed whitespace-pre-wrap">
+                <p className="text-[9px] text-slate-600 dark:text-slate-400 font-mono line-clamp-3 leading-relaxed whitespace-pre-wrap">
                   {prompt.content}
                 </p>
               </div>
 
               <div className="mt-3 flex justify-between items-center pt-3 border-t border-slate-100/50 dark:border-slate-800/50">
-                <span className="text-[8px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-tighter">PV-ID: {prompt.id.slice(0, 8)}</span>
+                <span className="text-[7px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-tighter">NODE: {prompt.id.slice(0, 8)}</span>
                 <button 
                   onClick={() => copyToClipboard(prompt.content, prompt.id)}
-                  className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider ${copiedId === prompt.id ? 'text-green-600' : 'text-slate-950 dark:text-white hover:opacity-70'}`}
+                  className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-wider ${copiedId === prompt.id ? 'text-green-600' : 'text-slate-950 dark:text-white hover:opacity-70'}`}
                 >
                   {copiedId === prompt.id ? 'Copied' : 'Copy'}
                 </button>
@@ -194,7 +194,7 @@ const PromptVault: React.FC = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white dark:bg-slate-950 rounded-none w-full max-w-[260px] border border-slate-200 dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
             <div className="p-6 text-center space-y-6">
-              <p className="text-[11px] font-bold text-slate-950 dark:text-white uppercase tracking-wider">
+              <p className="text-[10px] font-bold text-slate-950 dark:text-white uppercase tracking-wider">
                 {deleteModal.targetId === 'ALL' ? 'Purge database?' : 'Remove entry?'}
               </p>
 
@@ -221,7 +221,7 @@ const PromptVault: React.FC = () => {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/20 dark:bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-950 rounded-none w-full max-w-xl border border-slate-950 dark:border-slate-700 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-4 border-b border-slate-950 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-950">
-              <h2 className="text-[10px] font-bold text-slate-950 dark:text-white uppercase tracking-widest">{editingPrompt ? 'Update Record' : 'New Entry'}</h2>
+              <h2 className="text-[9px] font-bold text-slate-950 dark:text-white uppercase tracking-widest">{editingPrompt ? 'Update Record' : 'New Entry'}</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-950 dark:hover:text-white">
                 <X className="w-4 h-4" />
               </button>
@@ -245,7 +245,7 @@ const PromptVault: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">System Instruction</label>
-                <textarea required rows={6} className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none focus:outline-none focus:border-slate-950 dark:focus:border-white font-mono text-[10px] leading-relaxed dark:text-white" value={formData.content} onChange={(e) => setFormData({...formData, content: e.target.value})} />
+                <textarea required rows={6} className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none focus:outline-none focus:border-slate-950 dark:focus:border-white font-mono text-[9px] leading-relaxed dark:text-white" value={formData.content} onChange={(e) => setFormData({...formData, content: e.target.value})} />
               </div>
               <div className="flex justify-end gap-2 pt-4">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-[9px] font-bold uppercase text-slate-400 hover:text-slate-950 dark:hover:text-white">Abort</button>

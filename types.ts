@@ -28,7 +28,9 @@ export interface AppSettings {
   isConfigured: boolean;
   theme: Theme;
   customInstructions?: Record<ToolType, string>;
-  hasKeySelected: boolean; // For Gemini-specific native selector
+  hasKeySelected: boolean;
+  useProxy: boolean;
+  proxyUrl?: string;
   apiKeys: {
     openai?: string;
     groq?: string;

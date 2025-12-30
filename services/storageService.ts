@@ -19,6 +19,8 @@ export const storageService = {
       isConfigured: true, 
       theme: 'light',
       hasKeySelected: false,
+      useProxy: false,
+      proxyUrl: 'https://geminibackend.actionszam.workers.dev/',
       apiKeys: {}
     };
     return data ? { ...defaults, ...JSON.parse(data) } : defaults;
@@ -27,7 +29,6 @@ export const storageService = {
   saveSettings: (settings: AppSettings): void => {
     localStorage.setItem(StorageKeys.SETTINGS, JSON.stringify(settings));
     
-    // Apply theme class to document
     if (settings.theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {

@@ -10,15 +10,56 @@ export const aiService = {
     const provider = settings.provider || 'gemini';
 
     if (provider === 'gemini') {
+      if (settings.useProxy && settings.proxyUrl) {
+        // Combined prompt structure for simple workers
+        const combinedPrompt = `[SYSTEM INSTRUCTION]\n${systemInstruction}\n\n[USER INPUT]\n${prompt}\n\nIMPORTANT: Respond ONLY with a valid JSON array of strings. No markdown formatting.`;
+        return aiService.generateViaProxy(settings.proxyUrl, combinedPrompt);
+      }
       return aiService.generateGemini(settings.model, systemInstruction, prompt);
     } else {
       return aiService.generateOpenAICompatible(provider, settings.model, systemInstruction, prompt);
     }
   },
 
+  generateViaProxy: async (proxyUrl: string, combinedPrompt: string): Promise<string[]> => {
+    // Clean URL: Remove whitespace and any accidental query strings (e.g. ?Content-Type=...)
+    const cleanUrl = proxyUrl.trim().replace(/\?.*$/, '');
+    
+    const response = await fetch(cleanUrl, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json' // Explicitly set header as requested
+      },
+      body: JSON.stringify({ prompt: combinedPrompt })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Proxy Node Error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // Parse Gemini response structure from worker
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 
+                 data.candidates?.[0]?.text ||
+                 data.text || 
+                 data.response;
+    
+    if (!text) throw new Error("Null response from inference engine.");
+
+    try {
+      // Clean potential markdown and parse
+      const cleanedText = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleanedText);
+      return Array.isArray(parsed) ? parsed : [cleanedText];
+    } catch {
+      return [text];
+    }
+  },
+
   generateGemini: async (model: string, system: string, prompt: string): Promise<string[]> => {
     const apiKey = process.env.API_KEY;
-    if (!apiKey) throw new Error("Native Gemini key not found. Please select a key in Settings.");
+    if (!apiKey) throw new Error("Inbound Key missing. Select project in Settings.");
 
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
@@ -65,43 +106,36 @@ export const aiService = {
         break;
     }
 
-    if (!apiKey) throw new Error(`API key for ${provider.toUpperCase()} not found. Add it in Settings.`);
+    if (!apiKey) throw new Error(`API Key for ${provider.toUpperCase()} not found.`);
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': window.location.origin,
-        'X-Title': 'Prompt Vault'
       },
       body: JSON.stringify({
         model,
         messages: [
-          { role: 'system', content: system + " ALWAYS RESPOND ONLY WITH A VALID JSON ARRAY OF STRINGS." },
+          { role: 'system', content: system + " Respond only with a JSON array of strings." },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.7,
-        response_format: { type: "json_object" }
+        temperature: 0.7
       })
     });
 
     if (!response.ok) {
       const err = await response.json();
-      throw new Error(err.error?.message || `Request failed with status ${response.status}`);
+      throw new Error(err.error?.message || `Provider Handshake Fail: ${response.status}`);
     }
 
     const data = await response.json();
     const content = data.choices[0]?.message?.content;
 
     try {
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed)) return parsed;
-      if (typeof parsed === 'object') {
-        const firstArray = Object.values(parsed).find(v => Array.isArray(v));
-        if (firstArray) return firstArray as string[];
-      }
-      return [content];
+      const cleaned = content.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      return Array.isArray(parsed) ? parsed : [content];
     } catch {
       return [content];
     }
@@ -113,6 +147,14 @@ export const aiService = {
 
     try {
       if (provider === 'gemini') {
+        if (settings.useProxy && settings.proxyUrl) {
+          const res = await fetch(settings.proxyUrl.replace(/\?.*$/, ''), { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: 'ping' }) 
+          });
+          return res.ok;
+        }
         const apiKey = process.env.API_KEY;
         if (!apiKey) return false;
         const ai = new GoogleGenAI({ apiKey });
@@ -124,16 +166,10 @@ export const aiService = {
         return !!response.text;
       } else {
         if (!keyToTest) return false;
-        
-        let url = '';
-        if (provider === 'openai') url = 'https://api.openai.com/v1/models';
-        if (provider === 'groq') url = 'https://api.groq.com/openai/v1/models';
-        if (provider === 'openrouter') url = 'https://openrouter.ai/api/v1/auth/key';
-
-        const response = await fetch(url, {
-          headers: { 'Authorization': `Bearer ${keyToTest}` }
-        });
-        
+        const url = provider === 'openai' ? 'https://api.openai.com/v1/models' : 
+                    provider === 'groq' ? 'https://api.groq.com/openai/v1/models' :
+                    'https://openrouter.ai/api/v1/auth/key';
+        const response = await fetch(url, { headers: { 'Authorization': `Bearer ${keyToTest}` } });
         return response.ok;
       }
     } catch {
