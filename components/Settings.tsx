@@ -86,8 +86,8 @@ const Settings: React.FC = () => {
           <div className="p-6 space-y-4">
             <div className="p-3 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 flex gap-3">
               <ShieldCheck className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
-              <p className="text-[9px] font-medium text-indigo-700 dark:text-indigo-400 uppercase leading-relaxed">
-                A Cloudflare Worker proxy is mandatory for local development. It secures your Gemini API Key and prevents the 'Invalid API Key' 400 error.
+              <p className="text-[9px] font-medium text-indigo-700 dark:text-indigo-400 uppercase leading-relaxed text-balance">
+                Your Worker requires 'Authorization: Bearer zam'. The app is now sending this. Ensure your Worker handles the OPTIONS preflight correctly.
               </p>
             </div>
 
@@ -122,27 +122,23 @@ const Settings: React.FC = () => {
                 <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/50 space-y-4">
                   <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
                     <AlertCircle className="w-3 h-3" />
-                    <span className="text-[9px] font-bold uppercase tracking-widest">CORS Preflight (OPTIONS) Missing</span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest">CORS Preflight (OPTIONS) Failed</span>
                   </div>
                   <p className="text-[8px] text-amber-600 dark:text-amber-500 font-medium uppercase leading-tight">
-                    Browsers block localhost requests unless your Worker specifically allows them. Add this logic to the top of your Worker:
+                    Since we send an 'Authorization' header, your Worker's OPTIONS handler must allow it explicitly:
                   </p>
                   <div className="bg-slate-950 p-4 rounded-none overflow-x-auto border border-slate-800 relative group">
                     <pre className="text-[8px] text-slate-300 font-mono leading-relaxed">
-{`// Add this at the start of your fetch handler:
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
-
-if (request.method === "OPTIONS") {
-  return new Response(null, { headers: corsHeaders });
+{`if (request.method === "OPTIONS") {
+  return new Response(null, { 
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization", // <--- ADD THIS
+    }
+  });
 }`}
                     </pre>
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                       <Code className="w-3 h-3 text-slate-600" />
-                    </div>
                   </div>
                 </div>
               </div>

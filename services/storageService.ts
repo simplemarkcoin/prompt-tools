@@ -19,8 +19,8 @@ export const storageService = {
       isConfigured: true, 
       theme: 'light',
       hasKeySelected: false,
-      useProxy: true, // Force proxy by default for localhost compatibility
-      proxyUrl: 'https://geminibackend.actionszam.workers.dev/',
+      useProxy: true,
+      proxyUrl: 'https://super-shadow-9c13.zammiaactions.workers.dev/',
       apiKeys: {}
     };
     return data ? { ...defaults, ...JSON.parse(data) } : defaults;

@@ -28,7 +28,8 @@ export const aiService = {
       const response = await fetch(cleanUrl, {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer zam' // Required by user's Worker
         },
         body: JSON.stringify({ prompt: combinedPrompt })
       });
@@ -39,12 +40,14 @@ export const aiService = {
       }
 
       const data = await response.json();
+      
+      // Handle the data structure returned by the worker
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 
                    data.text || 
                    data.response || 
                    data.output;
       
-      if (!text) throw new Error("Worker returned no content. Verify your Worker's Gemini API call.");
+      if (!text) throw new Error("Worker returned no content. Check Worker console logs.");
 
       const cleanedText = text.replace(/```json|```/g, '').trim();
       try {
@@ -54,9 +57,8 @@ export const aiService = {
         return [text];
       }
     } catch (err: any) {
-      // Logic to distinguish between CORS/Network errors and actual API errors
-      if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-        throw new Error("CORS/NETWORK ERROR: Your Worker is either offline or blocking localhost. Ensure you handle the 'OPTIONS' method and return CORS headers.");
+      if (err.name === 'TypeError' && err.message.toLowerCase().includes('fetch')) {
+        throw new Error("CORS/NETWORK ERROR: Your Worker is blocking localhost. Ensure your 'OPTIONS' response includes 'Authorization' in 'Access-Control-Allow-Headers'.");
       }
       throw new Error(`Proxy Link Failed: ${err.message}`);
     }
@@ -145,7 +147,10 @@ export const aiService = {
         if (settings.useProxy && settings.proxyUrl) {
           const res = await fetch(settings.proxyUrl.split('?')[0], { 
             method: 'POST', 
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer zam'
+            },
             body: JSON.stringify({ prompt: 'ping' }) 
           });
           return res.ok;
