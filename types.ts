@@ -32,6 +32,7 @@ export interface AppSettings {
   useProxy: boolean;
   proxyUrl?: string;
   apiKeys: {
+    gemini?: string;
     openai?: string;
     groq?: string;
     openrouter?: string;

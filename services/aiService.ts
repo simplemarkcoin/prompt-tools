@@ -1,5 +1,4 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
 import { storageService } from "./storageService";
 import { ToolType, AIProvider } from "../types";
 
@@ -64,31 +63,57 @@ export const aiService = {
   },
 
   generateGemini: async (model: string, system: string, prompt: string): Promise<string[]> => {
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) throw new Error("Local API_KEY not found. Use 'Proxy Mode' for localhost development.");
+    const settings = storageService.getSettings();
+    const apiKey = settings.apiKeys.gemini || process.env.API_KEY;
 
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        systemInstruction: system,
-        temperature: 0.7,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING }
-        }
+    if (!apiKey) throw new Error("Gemini API Key not found. Please configure it in Settings.");
+
+    const modelName = model.startsWith('models/') ? model : `models/${model}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`;
+
+    const payload = {
+      system_instruction: { 
+        parts: [{ text: system }] 
       },
-    });
+      contents: [
+        { 
+          parts: [{ text: prompt }] 
+        }
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        response_mime_type: "application/json",
+        response_schema: {
+          type: "ARRAY",
+          items: { type: "STRING" }
+        }
+      }
+    };
 
-    const text = response.text;
-    if (!text) return [];
     try {
-      const parsed = JSON.parse(text);
-      return Array.isArray(parsed) ? parsed : [text];
-    } catch {
-      return [text];
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error?.message || `Gemini API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if (!text) return [];
+      try {
+        const parsed = JSON.parse(text);
+        return Array.isArray(parsed) ? parsed : [text];
+      } catch {
+        return [text];
+      }
+    } catch (error: any) {
+      throw new Error(error.message || "Failed to generate content with Gemini");
     }
   },
 
@@ -143,26 +168,21 @@ export const aiService = {
 
     try {
       if (provider === 'gemini') {
-        if (settings.useProxy && settings.proxyUrl) {
-          const res = await fetch(settings.proxyUrl.split('?')[0], { 
-            method: 'POST', 
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer zam'
-            },
-            body: JSON.stringify({ prompt: 'ping' }) 
-          });
-          return res.ok;
-        }
-        const apiKey = process.env.API_KEY;
+        const apiKey = keyToTest || process.env.API_KEY;
         if (!apiKey) return false;
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model,
-          contents: "ping",
-          config: { maxOutputTokens: 5, thinkingConfig: { thinkingBudget: 0 } }
+        
+        const modelName = model.startsWith('models/') ? model : `models/${model || 'gemini-3-flash-preview'}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`;
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: "ping" }] }],
+            generationConfig: { max_output_tokens: 5 }
+          })
         });
-        return !!response.text;
+        return response.ok;
       } else {
         if (!keyToTest) return false;
         const url = provider === 'openai' ? 'https://api.openai.com/v1/models' : 
